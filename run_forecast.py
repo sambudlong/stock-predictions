@@ -11,11 +11,6 @@ import yfinance as yf
 
 def forecast_stock(ticker, lookback_years=3, forecast_days=30):
 
-    # Request and accept user input
-    ticker = input("Enter stock ticker (e.g., AAPL): ").upper()
-    lookback_years = int(input("Enter lookback period in years (e.g., 3): "))
-    forecast_days = int(input("Enter number of future business days to predict (e.g., 60): "))
-
     # Download and Prepare Data
     end_date = datetime.today()
     start_date = end_date - timedelta(days=lookback_years * 365)

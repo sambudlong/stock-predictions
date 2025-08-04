@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from run_forcast import forecast_stock
+from run_forecast import forecast_stock
 import matplotlib.pyplot as plt
+from xgboost import XGBRegressor
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="Stock Price Forecaster", layout="wide")

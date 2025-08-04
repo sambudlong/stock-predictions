@@ -6,8 +6,18 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import streamlit as st
 from xgboost import XGBRegressor
 import yfinance as yf
+
+st.set_page_config(page_title="Stock Price Forecaster", layout="wide")
+st.title("📈 Stock Price Forecasting Tool")
+
+st.sidebar.header("Forecast Settings")
+
+ticker = st.sidebar.text_input("Stock Ticker", value="AAPL")
+lookback_years = st.sidebar.slider("Lookback Period (Years)", min_value=1, max_value=10, value=3)
+predict_days = st.sidebar.slider("Days to Forecast", min_value=30, max_value=365, value=180)
 
 def forecast_stock(ticker, lookback_years=3, forecast_days=30):
 
@@ -82,7 +92,7 @@ def forecast_stock(ticker, lookback_years=3, forecast_days=30):
 
         # Add volatility (recent 30-day rolling std dev)
         recent_std = latest["STD_250"].iloc[-1] if "STD_250" in latest.columns else 5
-        noise = np.random.normal(loc=0, scale=recent_std)
+        noise = np.random.normal(loc=0, scale=recent_std/2)
         final_pred = trended_pred + noise
 
         # Ensure the price doesn't drop below a threshold (optional)
@@ -98,13 +108,36 @@ def forecast_stock(ticker, lookback_years=3, forecast_days=30):
         pd.DataFrame({"Predicted_Close": [last_real_price]}, index=[last_real_date]),
         predicted_df
     ])
-    plt.figure(figsize=(14, 6))
-    plt.plot(df["Close"], label="Historical Close")
-    plt.plot(predicted_df["Predicted_Close"], label="Predicted 2025 Close", color="orange")
-    plt.title(f"{ticker} Close Price Prediction for 2025\n(Upward Trend + Volatility + Model Ensemble)")
-    plt.xlabel("Date")
-    plt.ylabel("Price (USD)")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+
+    return df, predicted_df
+
+if st.sidebar.button("Run Forecast"):
+    with st.spinner("Downloading data and running forecast..."):
+        hist_df, forecast_df = forecast_stock(ticker, lookback_years, predict_days)
+
+    if hist_df is None:
+        st.error("No data found. Please check the ticker symbol.")
+    else:
+        st.subheader(f"{ticker.upper()} Forecast")
+        fig, ax = plt.subplots(figsize=(14, 6))
+        ax.plot(hist_df.index, hist_df["Close"], label="Historical Close", color="black")
+        ax.plot(forecast_df.index, forecast_df["Predicted_Close"], label="Predicted 2025 Close", color="orange", linestyle="--")
+        ax.set_title(f"{ticker} Close Price Prediction for 2025\n(Upward Trend + Volatility + Model Ensemble)")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Price (USD)")
+        ax.legend()
+        ax.grid(True)
+        st.pyplot(fig)
+
+    with st.expander("📄 See Forecast Data"):
+        st.dataframe(forecast_df.style.format({"Predicted_Close": "{:.2f}"}))
+    # plt.figure(figsize=(14, 6))
+    # plt.plot(df["Close"], label="Historical Close")
+    # plt.plot(predicted_df["Predicted_Close"], label="Predicted 2025 Close", color="orange")
+    # plt.title(f"{ticker} Close Price Prediction for 2025\n(Upward Trend + Volatility + Model Ensemble)")
+    # plt.xlabel("Date")
+    # plt.ylabel("Price (USD)")
+    # plt.legend()
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()

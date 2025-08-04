@@ -1,16 +1,15 @@
-def main():
-    
-    from datetime import datetime, timedelta
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.linear_model import LinearRegression, Ridge
-    from sklearn.metrics import mean_squared_error, r2_score
-    from sklearn.model_selection import train_test_split
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-    from xgboost import XGBRegressor
-    import yfinance as yf
+from datetime import datetime, timedelta
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from xgboost import XGBRegressor
+import yfinance as yf
 
+def forecast_stock(ticker, lookback_years=3, forecast_days=30):
 
     # Request and accept user input
     ticker = input("Enter stock ticker (e.g., AAPL): ").upper()
@@ -18,11 +17,9 @@ def main():
     forecast_days = int(input("Enter number of future business days to predict (e.g., 60): "))
 
     # Download and Prepare Data
-    # end_date = datetime.today().strftime('%Y-%m-%d')
     end_date = datetime.today()
     start_date = end_date - timedelta(days=lookback_years * 365)
-    # start_date = "2021-01-01"
-    # end_date = "2024-12-31"
+
     df = yf.download(ticker, start=start_date, end=end_date)
     df.columns = df.columns.get_level_values(0)
     df = df[["Close"]].copy()
@@ -116,6 +113,3 @@ def main():
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
-if __name__ == "__main__":
-    main()

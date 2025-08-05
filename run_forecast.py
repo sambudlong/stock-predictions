@@ -1,28 +1,30 @@
-def main():
-    
-    from datetime import datetime, timedelta
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.linear_model import LinearRegression, Ridge
-    from sklearn.metrics import mean_squared_error, r2_score
-    from sklearn.model_selection import train_test_split
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-    from xgboost import XGBRegressor
-    import yfinance as yf
+from datetime import datetime, timedelta
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import streamlit as st
+from xgboost import XGBRegressor
+import yfinance as yf
 
+st.set_page_config(page_title="Stock Price Forecaster", layout="wide")
+st.title("📈 Stock Price Forecasting Tool")
 
-    # Request and accept user input
-    ticker = input("Enter stock ticker (e.g., AAPL): ").upper()
-    lookback_years = int(input("Enter lookback period in years (e.g., 3): "))
-    forecast_days = int(input("Enter number of future business days to predict (e.g., 60): "))
+st.sidebar.header("Forecast Settings")
+
+ticker = st.sidebar.text_input("Stock Ticker", value="AAPL")
+lookback_years = st.sidebar.slider("Lookback Period (Years)", min_value=1, max_value=10, value=3)
+predict_days = st.sidebar.slider("Days to Forecast", min_value=30, max_value=365, value=180)
+
+def forecast_stock(ticker, lookback_years=3, forecast_days=30):
 
     # Download and Prepare Data
-    # end_date = datetime.today().strftime('%Y-%m-%d')
     end_date = datetime.today()
     start_date = end_date - timedelta(days=lookback_years * 365)
-    # start_date = "2021-01-01"
-    # end_date = "2024-12-31"
+
     df = yf.download(ticker, start=start_date, end=end_date)
     df.columns = df.columns.get_level_values(0)
     df = df[["Close"]].copy()
@@ -90,7 +92,7 @@ def main():
 
         # Add volatility (recent 30-day rolling std dev)
         recent_std = latest["STD_250"].iloc[-1] if "STD_250" in latest.columns else 5
-        noise = np.random.normal(loc=0, scale=recent_std)
+        noise = np.random.normal(loc=0, scale=recent_std/2)
         final_pred = trended_pred + noise
 
         # Ensure the price doesn't drop below a threshold (optional)
@@ -106,16 +108,36 @@ def main():
         pd.DataFrame({"Predicted_Close": [last_real_price]}, index=[last_real_date]),
         predicted_df
     ])
-    plt.figure(figsize=(14, 6))
-    plt.plot(df["Close"], label="Historical Close")
-    plt.plot(predicted_df["Predicted_Close"], label="Predicted 2025 Close", color="orange")
-    plt.title(f"{ticker} Close Price Prediction for 2025\n(Upward Trend + Volatility + Model Ensemble)")
-    plt.xlabel("Date")
-    plt.ylabel("Price (USD)")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
 
-if __name__ == "__main__":
-    main()
+    return df, predicted_df
+
+if st.sidebar.button("Run Forecast"):
+    with st.spinner("Downloading data and running forecast..."):
+        hist_df, forecast_df = forecast_stock(ticker, lookback_years, predict_days)
+
+    if hist_df is None:
+        st.error("No data found. Please check the ticker symbol.")
+    else:
+        st.subheader(f"{ticker.upper()} Forecast")
+        fig, ax = plt.subplots(figsize=(14, 6))
+        ax.plot(hist_df.index, hist_df["Close"], label="Historical Close", color="black")
+        ax.plot(forecast_df.index, forecast_df["Predicted_Close"], label="Predicted 2025 Close", color="orange", linestyle="--")
+        ax.set_title(f"{ticker} Close Price Prediction for 2025\n(Upward Trend + Volatility + Model Ensemble)")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Price (USD)")
+        ax.legend()
+        ax.grid(True)
+        st.pyplot(fig)
+
+    with st.expander("📄 See Forecast Data"):
+        st.dataframe(forecast_df.style.format({"Predicted_Close": "{:.2f}"}))
+    # plt.figure(figsize=(14, 6))
+    # plt.plot(df["Close"], label="Historical Close")
+    # plt.plot(predicted_df["Predicted_Close"], label="Predicted 2025 Close", color="orange")
+    # plt.title(f"{ticker} Close Price Prediction for 2025\n(Upward Trend + Volatility + Model Ensemble)")
+    # plt.xlabel("Date")
+    # plt.ylabel("Price (USD)")
+    # plt.legend()
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
